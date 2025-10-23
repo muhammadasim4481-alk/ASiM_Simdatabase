@@ -3,325 +3,268 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Offline SIM Searcher (Local CSV)</title>
+<title>SIM Checker — Normalized (Offline)</title>
 <style>
-  :root{--accent:#0b76ef;--bg:#f4f7fb;--card:#fff;--muted:#666}
-  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:var(--bg);margin:0;padding:20px}
-  .wrap{max-width:1100px;margin:0 auto}
-  header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-  h1{font-size:18px;margin:0}
-  .card{background:var(--card);border-radius:10px;padding:14px;margin-top:14px;box-shadow:0 6px 18px rgba(15,30,50,0.06)}
-  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  input[type="text"],select{padding:8px;border-radius:8px;border:1px solid #ddd}
-  button{padding:8px 12px;border-radius:8px;border:1px solid rgba(0,0,0,0.08);background:var(--accent);color:#fff;cursor:pointer}
-  button.secondary{background:#fff;color:#111;border:1px solid #ddd}
-  table{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
+  body{font-family:Arial, Helvetica, sans-serif;background:#f3f6fa;margin:0;padding:18px}
+  .wrap{max-width:720px;margin:0 auto}
+  .card{background:#fff;padding:16px;border-radius:10px;box-shadow:0 6px 18px rgba(15,30,50,0.06);margin-bottom:12px}
+  h2{color:#0b76ef;margin:0 0 8px 0}
+  input,select,button,textarea{padding:8px;border:1px solid #ddd;border-radius:6px;font-size:14px}
+  input[type=file]{padding:6px}
+  .row{display:flex;gap:8px;flex-wrap:wrap}
+  .col{flex:1;min-width:160px}
+  .result{background:#fafafa;padding:10px;border-radius:8px;margin-top:10px;display:none}
+  .error{color:#b00020;margin-top:8px}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
   th,td{padding:8px;border-bottom:1px solid #f0f0f0;text-align:left}
-  th{background:#fafafa;font-weight:600}
-  .muted{color:var(--muted);font-size:13px}
-  .small{font-size:12px;color:var(--muted)}
-  .filesel{display:flex;gap:8px;align-items:center}
-  .pager{display:flex;gap:6px;align-items:center;margin-top:8px}
-  .danger{color:#b00020}
-  @media (max-width:720px){header{flex-direction:column;align-items:flex-start}}
+  th{background:#fff2}
+  .small{font-size:13px;color:#666}
 </style>
 </head>
 <body>
   <div class="wrap">
-    <header>
-      <div>
-        <h1>Offline SIM Searcher</h1>
-        <div class="small">Load a CSV of SIM records and search locally (no upload to server).</div>
+    <div class="card">
+      <h2>SIM Owner Details Checker — Normalized</h2>
+      <div class="small">Type number in any common format (e.g. +92 300 1234567, 3001234567, 03001234567). The tool normalizes it.</div>
+
+      <div style="margin-top:12px" class="row">
+        <input id="simIn" class="col" placeholder="Enter SIM (e.g. +92 300 1234567)">
+        <button id="checkBtn">Check</button>
+        <button id="showAll">Show All Demo Records</button>
       </div>
-      <div class="small">Records in memory: <strong id="recCount">0</strong></div>
-    </header>
+
+      <div id="error" class="error"></div>
+
+      <div id="result" class="result">
+        <h3>Owner Information</h3>
+        <p><strong>SIM:</strong> <span id="rSim"></span></p>
+        <p><strong>Owner:</strong> <span id="rOwner"></span></p>
+        <p><strong>CNIC:</strong> <span id="rCnic"></span></p>
+        <p><strong>Network:</strong> <span id="rNetwork"></span></p>
+        <p><strong>Status:</strong> <span id="rStatus"></span></p>
+        <p><strong>Registered:</strong> <span id="rDate"></span></p>
+      </div>
+    </div>
 
     <div class="card">
-      <div class="filesel">
-        <input id="fileInput" type="file" accept=".csv" />
-        <button id="sampleBtn" class="secondary">Load Sample CSV</button>
-        <button id="clearBtn" class="secondary">Clear Data</button>
-        <button id="exportBtn">Export filtered CSV</button>
+      <h3>Add / Edit Demo Record (Local only)</h3>
+      <div class="row">
+        <input id="addSim" class="col" placeholder="SIM (any format)">
+        <input id="addOwner" class="col" placeholder="Owner name">
+        <input id="addCnic" class="col" placeholder="CNIC">
       </div>
-      <div class="muted" style="margin-top:8px">
-        CSV columns supported (case-insensitive): <code>sim, owner, cnic, network, status, regDate</code>.
-        The parser will accept extra columns too.
+      <div class="row" style="margin-top:8px">
+        <input id="addNetwork" placeholder="Network (Jazz/Telenor/...)" class="col">
+        <select id="addStatus" style="width:140px">
+          <option>Active</option><option>Inactive</option><option>Blocked</option>
+        </select>
+        <input id="addDate" placeholder="Reg date (e.g. 2024-01-12)" style="width:160px">
+        <button id="addBtn">Add / Update</button>
       </div>
-
-      <hr/>
-
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input id="q" type="text" placeholder="Search by SIM, owner, CNIC, network..." style="flex:1"/>
-        <select id="filterNetwork"><option value="">All networks</option></select>
-        <select id="filterStatus"><option value="">All statuses</option><option>Active</option><option>Inactive</option><option>Blocked</option></select>
-        <select id="sort"><option value="created_desc">Newest</option><option value="created_asc">Oldest</option><option value="owner_asc">Owner A–Z</option><option value="owner_desc">Owner Z–A</option></select>
-        <button id="searchBtn">Search</button>
-      </div>
-
-      <div class="muted" style="margin-top:8px">Tip: Use your own CSV. This tool runs entirely in your browser — data stays local.</div>
+      <div class="small" style="margin-top:8px">Added records are stored in browser localStorage and searchable locally only.</div>
     </div>
 
-    <div class="card" id="resultsCard" style="display:none">
-      <div style="display:flex;justify-content:space-between;align-items:center">
-        <div><strong>Results</strong> <span class="small" id="showing"></span></div>
-        <div class="small">Selected: <span id="selectedCount">0</span></div>
+    <div class="card">
+      <h3>Load CSV (optional)</h3>
+      <div class="row">
+        <input id="csvFile" type="file" accept=".csv">
+        <button id="loadSample">Load Sample CSV</button>
+        <button id="clearAll">Clear All Records</button>
       </div>
+      <div class="small" style="margin-top:8px">CSV should have columns like: <code>sim,owner,cnic,network,status,regDate</code>. Extra columns OK.</div>
+    </div>
 
-      <table id="table">
-        <thead>
-          <tr><th></th><th>#</th><th>SIM</th><th>Owner</th><th>CNIC</th><th>Network</th><th>Status</th><th>Reg Date</th></tr>
-        </thead>
+    <div class="card">
+      <h3>All Records (searchable)</h3>
+      <div class="small">Records in memory: <span id="count">0</span></div>
+      <table id="tbl">
+        <thead><tr><th>#</th><th>SIM</th><th>Owner</th><th>CNIC</th><th>Network</th><th>Status</th><th>RegDate</th></tr></thead>
         <tbody></tbody>
       </table>
-
-      <div class="pager">
-        <button id="prevPage" class="secondary">Prev</button>
-        <div class="small">Page <span id="pageNum">1</span> / <span id="pageTotal">1</span></div>
-        <button id="nextPage" class="secondary">Next</button>
-        <div style="margin-left:auto" class="small muted">Rows per page:
-          <select id="perPage"><option>10</option><option>25</option><option>50</option><option>100</option></select>
-        </div>
-      </div>
-    </div>
-
-    <div class="card small muted" id="legalNote" style="margin-top:12px">
-      <strong>Legal reminder:</strong> Do not load or process personal data unless you have lawful authority or explicit permission. This tool is local-only and intended for authorized use.
     </div>
   </div>
 
 <script>
-/*
-  Offline SIM Searcher
-  - Parses a user-supplied CSV (client-side)
-  - Allows searching, filtering, pagination, and export of filtered results
-  - All operations are done in-browser (no servers)
-*/
+/* -- Utilities -- */
+function normalizeSim(s){
+  if(!s) return '';
+  s = String(s).trim();
+  // remove non-digit characters
+  let digits = s.replace(/\\D/g,'');
+  if(digits.startsWith('00')) {
+    // 00923001234567 -> 03001234567
+    if(digits.startsWith('0092')) digits = '0' + digits.slice(4);
+  }
+  if(digits.startsWith('92') && digits.length >= 11) {
+    // 923001234567 -> 03001234567
+    digits = '0' + digits.slice(2);
+  }
+  // if it's 10 digits starting with 3 -> add leading 0
+  if(digits.length === 10 && digits.startsWith('3')) digits = '0' + digits;
+  // final ensure 11-digit mobile starting with 03
+  if(digits.length === 11 && digits.startsWith('03')) return digits;
+  // if still not valid, return digits as-is (will be rejected later)
+  return digits;
+}
 
-/* utilities */
-function csvSplitLine(line){
-  const out = []; let cur = ''; let inQ = false;
-  for (let i=0;i<line.length;i++){
-    const ch = line[i];
-    if (ch === '"') {
-      if (inQ && line[i+1] === '"') { cur += '"'; i++; } else { inQ = !inQ; }
+function isValidPakSim(s){
+  return /^03[0-9]{9}$/.test(s);
+}
+
+function saveToLocalStorage(){
+  try{ localStorage.setItem('simCheckerRecords', JSON.stringify(records)); }catch(e){}
+}
+function loadFromLocalStorage(){
+  try{
+    const raw = localStorage.getItem('simCheckerRecords');
+    if(raw) records = JSON.parse(raw);
+  }catch(e){ records = []; }
+}
+
+/* -- Data & index -- */
+let records = [
+  {sim:'03001234567', owner:'Ali Khan', cnic:'35202-1234567-1', network:'Jazz', status:'Active', regDate:'2024-01-12'},
+  {sim:'03121234567', owner:'Sara Ahmed', cnic:'61101-9876543-2', network:'Telenor', status:'Inactive', regDate:'2023-03-23'},
+  {sim:'03211234567', owner:'Usman Malik', cnic:'37405-7654321-3', network:'Zong', status:'Active', regDate:'2024-05-05'}
+];
+loadFromLocalStorage(); // load user-saved ones
+// ensure normalized keys
+records = records.map(r => ({...r, sim: normalizeSim(r.sim)}));
+
+const index = {}; // map sim->record for quick lookup
+function rebuildIndex(){
+  indexKeys = {};
+  Object.keys(index).forEach(k=>delete index[k]);
+  records.forEach(r=>{ if(r.sim) index[r.sim]=r; });
+}
+rebuildIndex();
+renderTable();
+
+/* -- DOM refs -- */
+const simIn = document.getElementById('simIn');
+const checkBtn = document.getElementById('checkBtn');
+const resultBox = document.getElementById('result');
+const err = document.getElementById('error');
+const rSim = document.getElementById('rSim'), rOwner = document.getElementById('rOwner'), rCnic = document.getElementById('rCnic'), rNetwork = document.getElementById('rNetwork'), rStatus = document.getElementById('rStatus'), rDate = document.getElementById('rDate');
+const addSim = document.getElementById('addSim'), addOwner = document.getElementById('addOwner'), addCnic = document.getElementById('addCnic'), addNetwork = document.getElementById('addNetwork'), addStatus = document.getElementById('addStatus'), addDate = document.getElementById('addDate'), addBtn = document.getElementById('addBtn');
+const csvFile = document.getElementById('csvFile'), loadSample = document.getElementById('loadSample'), clearAll = document.getElementById('clearAll');
+const tblBody = document.querySelector('#tbl tbody'), countSpan = document.getElementById('count'), showAllBtn = document.getElementById('showAll');
+
+/* -- Actions -- */
+checkBtn.addEventListener('click', ()=> {
+  err.textContent = ''; resultBox.style.display = 'none';
+  let input = simIn.value;
+  if(!input){ err.textContent='Please enter a SIM number.'; return; }
+  const norm = normalizeSim(input);
+  if(!isValidPakSim(norm)){ err.textContent='Number normalized to: ' + norm + ' — but it is not valid Pakistan mobile format (should be 03XXXXXXXXX).'; return; }
+  // lookup
+  const rec = index[norm] || records.find(r => r.sim === norm);
+  if(rec){
+    rSim.textContent = rec.sim || norm;
+    rOwner.textContent = rec.owner || '—';
+    rCnic.textContent = rec.cnic || '—';
+    rNetwork.textContent = rec.network || '—';
+    rStatus.textContent = rec.status || '—';
+    rDate.textContent = rec.regDate || '—';
+    resultBox.style.display = 'block';
+  } else {
+    err.textContent = 'No record found for ' + norm + '. You can add it below if you want (local only).';
+  }
+});
+
+addBtn.addEventListener('click', ()=>{
+  const raw = addSim.value.trim();
+  if(!raw){ alert('Provide SIM'); return; }
+  const norm = normalizeSim(raw);
+  if(!isValidPakSim(norm)){ alert('SIM normalized to "'+norm+'" which is not in 03XXXXXXXXX format. Fix input.'); return; }
+  // update or add
+  const existing = records.find(r => r.sim === norm);
+  const newRec = {sim: norm, owner: addOwner.value.trim(), cnic: addCnic.value.trim(), network: addNetwork.value.trim(), status: addStatus.value, regDate: addDate.value.trim()};
+  if(existing){
+    Object.assign(existing, newRec);
+  } else {
+    records.push(newRec);
+  }
+  rebuildIndex(); saveToLocalStorage(); renderTable();
+  alert('Record saved locally for ' + norm);
+  // clear inputs
+  addSim.value=''; addOwner.value=''; addCnic.value=''; addNetwork.value=''; addDate.value='';
+});
+
+showAllBtn.addEventListener('click', ()=> {
+  // quick show all demo entries in table (table always shows)
+  window.scrollTo({top:0,behavior:'smooth'});
+});
+
+loadSample.addEventListener('click', ()=>{
+  const sample = 'sim,owner,cnic,network,status,regDate\\n+92 300 1234567,Test User,00000-0000000-0,Jazz,Active,2024-01-01\\n03005556666,Another,11111-1111111-1,Telenor,Inactive,2023-02-02';
+  parseCsvText(sample);
+});
+
+csvFile.addEventListener('change', e=>{
+  const f = e.target.files[0];
+  if(!f) return;
+  const reader = new FileReader();
+  reader.onload = ()=> { parseCsvText(reader.result); csvFile.value=''; };
+  reader.readAsText(f);
+});
+
+clearAll.addEventListener('click', ()=>{
+  if(!confirm('Clear all locally stored records? This will remove data saved in your browser.')) return;
+  records = []; rebuildIndex(); saveToLocalStorage(); renderTable();
+});
+
+/* -- CSV parse (simple) -- */
+function parseCsvText(text){
+  const lines = text.split(/\\r?\\n/).filter(Boolean);
+  if(lines.length < 1) return;
+  const header = splitCsvLine(lines[0]).map(h=>h.trim().toLowerCase());
+  for(let i=1;i<lines.length;i++){
+    const vals = splitCsvLine(lines[i]);
+    const obj = {};
+    header.forEach((h,idx)=> obj[h] = (vals[idx]||'').trim());
+    // normalize mapping
+    const simRaw = obj.sim || obj.number || obj.msisdn || '';
+    const norm = normalizeSim(simRaw);
+    const rec = {sim: norm, owner: obj.owner||obj.name||'', cnic: obj.cnic||obj.nid||'', network: obj.network||obj.operator||'', status: obj.status||'', regDate: obj.regdate||obj.reg_date||''};
+    if(isValidPakSim(norm)){
+      const existing = records.find(r=>r.sim===norm);
+      if(existing) Object.assign(existing, rec); else records.push(rec);
+    } else {
+      // skip invalid sim formats (user sees nothing)
+      console.log('Skipped invalid SIM:', simRaw, '->', norm);
+    }
+  }
+  rebuildIndex(); saveToLocalStorage(); renderTable();
+  alert('CSV loaded. Total records: ' + records.length);
+}
+
+function splitCsvLine(line){
+  const out=[]; let cur=''; let inQ=false;
+  for(let i=0;i<line.length;i++){
+    const ch=line[i];
+    if(ch === '"'){
+      if(inQ && line[i+1] === '"'){ cur += '"'; i++; } else { inQ = !inQ; }
       continue;
     }
-    if (ch === ',' && !inQ){ out.push(cur); cur=''; continue; }
+    if(ch === ',' && !inQ){ out.push(cur); cur=''; continue; }
     cur += ch;
   }
   out.push(cur);
   return out;
 }
-function parseCSV(text){
-  const lines = text.split(/\r?\n/).filter((l,i)=>!(l.trim()==='' && i===0));
-  if(lines.length === 0) return [];
-  const header = csvSplitLine(lines[0]).map(h=>h.trim().toLowerCase());
-  const rows = [];
-  for(let i=1;i<lines.length;i++){
-    if (!lines[i].trim()) continue;
-    const vals = csvSplitLine(lines[i]);
-    const obj = {};
-    header.forEach((h,idx)=> obj[h] = (vals[idx] || '').trim());
-    // Normalized fields:
-    obj.sim = obj.sim || obj['number'] || obj['msisdn'] || '';
-    obj.owner = obj.owner || obj['name'] || '';
-    obj.cnic = obj.cnic || obj['nid'] || '';
-    obj.network = obj.network || obj.operator || '';
-    obj.status = obj.status || '';
-    obj.regDate = obj.regdate || obj['registration_date'] || '';
-    obj._raw = lines[i];
-    rows.push(obj);
-  }
-  return rows;
-}
 
-/* app state */
-let records = []; // full dataset
-let filtered = []; // filtered results
-let page = 1;
-let perPage = 10;
-
-/* dom */
-const fileInput = document.getElementById('fileInput');
-const sampleBtn = document.getElementById('sampleBtn');
-const clearBtn = document.getElementById('clearBtn');
-const exportBtn = document.getElementById('exportBtn');
-const recCount = document.getElementById('recCount');
-const resultsCard = document.getElementById('resultsCard');
-const tbody = document.querySelector('#table tbody');
-const showing = document.getElementById('showing');
-const qInput = document.getElementById('q');
-const filterNetwork = document.getElementById('filterNetwork');
-const filterStatus = document.getElementById('filterStatus');
-const sortSel = document.getElementById('sort');
-const searchBtn = document.getElementById('searchBtn');
-const prevPage = document.getElementById('prevPage');
-const nextPage = document.getElementById('nextPage');
-const pageNum = document.getElementById('pageNum');
-const pageTotal = document.getElementById('pageTotal');
-const perPageSel = document.getElementById('perPage');
-const selectedCount = document.getElementById('selectedCount');
-
-/* load CSV from file */
-fileInput.addEventListener('change', e=>{
-  const f = e.target.files[0];
-  if(!f) return;
-  const reader = new FileReader();
-  reader.onload = ()=> {
-    try {
-      const text = reader.result;
-      const parsed = parseCSV(text);
-      records = records.concat(parsed);
-      finalizeLoad();
-    } catch(err) { alert('Failed to parse CSV: '+err); }
-  };
-  reader.readAsText(f);
-  fileInput.value = '';
-});
-
-/* sample data support (small) */
-sampleBtn.addEventListener('click', ()=>{
-  const sampleCsv = `sim,owner,cnic,network,status,regDate
-03001234567,Ali Khan,35202-1234567-1,Jazz,Active,2024-01-12
-03121234567,Sara Ahmed,61101-9876543-2,Telenor,Inactive,2023-03-23
-03211234567,Usman Malik,37405-7654321-3,Zong,Active,2024-05-05
-03099988877,Faiza Riaz,41201-1112223-4,Ufone,Blocked,2022-07-15
-`;
-  records = records.concat(parseCSV(sampleCsv));
-  finalizeLoad();
-});
-
-/* clear */
-clearBtn.addEventListener('click', ()=>{
-  if(!confirm('Clear all loaded records from this page?')) return;
-  records = []; filtered = []; page = 1;
-  recCount.textContent = '0';
-  resultsCard.style.display = 'none';
-});
-
-/* export filtered */
-exportBtn.addEventListener('click', ()=>{
-  if(filtered.length === 0) return alert('No records to export.');
-  const headers = Object.keys(filtered[0]).filter(k=>!k.startsWith('_'));
-  // ensure main columns
-  const cols = ['sim','owner','cnic','network','status','regDate'];
-  const head = cols.filter(c=>true);
-  const lines = [head.join(',')].concat(filtered.map(r => head.map(h => `"${(r[h]||'').replace(/"/g,'""')}"`).join(',')));
-  const csv = lines.join('\\n');
-  const blob = new Blob([csv], {type:'text/csv'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'sim_filtered.csv'; a.click();
-  URL.revokeObjectURL(url);
-});
-
-/* filtering + searching */
-function buildNetworkFilterOptions(){
-  const nets = Array.from(new Set(records.map(r => (r.network||'').trim()).filter(Boolean))).sort();
-  filterNetwork.innerHTML = '<option value=\"\">All networks</option>' + nets.map(n=>`<option>${escapeHtml(n)}</option>`).join('');
-}
-function finalizeLoad(){
-  recCount.textContent = records.length;
-  buildNetworkFilterOptions();
-  applyFilters();
-  alert('Loaded records: ' + records.length);
-}
-
-/* search/apply */
-function applyFilters(){
-  const q = (qInput.value || '').toLowerCase().trim();
-  const net = (filterNetwork.value || '').trim().toLowerCase();
-  const status = (filterStatus.value || '').trim().toLowerCase();
-  filtered = records.filter(r=>{
-    if(net && (r.network||'').toLowerCase().trim() !== net) return false;
-    if(status && (r.status||'').toLowerCase().trim() !== status) return false;
-    if(!q) return true;
-    // search SIM, owner, cnic, network
-    return ((r.sim||'') + ' ' + (r.owner||'') + ' ' + (r.cnic||'') + ' ' + (r.network||'')).toLowerCase().includes(q);
-  });
-  // sort
-  const s = sortSel.value;
-  if(s === 'created_desc' || s === 'created_asc'){
-    // best-effort sort by regDate parsed; if missing keep order
-    filtered.sort((a,b)=>{
-      const ta = a.regDate ? Date.parse(a.regDate) || 0 : 0;
-      const tb = b.regDate ? Date.parse(b.regDate) || 0 : 0;
-      return s === 'created_desc' ? tb - ta : ta - tb;
-    });
-  } else if(s === 'owner_asc'){
-    filtered.sort((a,b)=> (a.owner||'').localeCompare(b.owner||''));
-  } else if(s === 'owner_desc'){
-    filtered.sort((a,b)=> (b.owner||'').localeCompare(a.owner||''));
-  }
-  page = 1;
-  renderPage();
-}
-
-/* render page */
-function renderPage(){
-  const total = filtered.length;
-  const pp = Number(perPageSel.value) || 10;
-  perPage = pp;
-  const totalPages = Math.max(1, Math.ceil(total / pp));
-  if(page > totalPages) page = totalPages;
-  const start = (page-1)*pp;
-  const slice = filtered.slice(start, start+pp);
-
-  // table
-  tbody.innerHTML = '';
-  slice.forEach((r, idx)=>{
+/* -- Render table -- */
+function renderTable(){
+  tblBody.innerHTML = '';
+  records.forEach((r, idx)=>{
     const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><input type="checkbox" data-idx="${start+idx}"/></td>
-      <td>${start + idx + 1}</td>
-      <td>${escapeHtml(r.sim||'')}</td>
-      <td>${escapeHtml(r.owner||'')}</td>
-      <td>${escapeHtml(r.cnic||'')}</td>
-      <td>${escapeHtml(r.network||'')}</td>
-      <td>${escapeHtml(r.status||'')}</td>
-      <td>${escapeHtml(r.regDate||'')}</td>
-    `;
-    tbody.appendChild(tr);
+    tr.innerHTML = `<td>${idx+1}</td><td>${escapeHtml(r.sim||'')}</td><td>${escapeHtml(r.owner||'')}</td><td>${escapeHtml(r.cnic||'')}</td><td>${escapeHtml(r.network||'')}</td><td>${escapeHtml(r.status||'')}</td><td>${escapeHtml(r.regDate||'')}</td>`;
+    tblBody.appendChild(tr);
   });
-
-  showing.textContent = `${Math.min(total, start+1)} – ${Math.min(total, start+slice.length)} of ${total}`;
-  pageNum.textContent = page;
-  pageTotal.textContent = totalPages;
-  resultsCard.style.display = total ? 'block' : 'none';
-
-  // checkbox selection listener
-  selectedCount.textContent = 0;
-  tbody.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-    cb.addEventListener('change', ()=> {
-      const selected = Array.from(tbody.querySelectorAll('input[type="checkbox"]:checked')).length;
-      selectedCount.textContent = selected;
-    });
-  });
+  countSpan.textContent = records.length;
 }
-
-/* helpers */
 function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-/* events */
-searchBtn.addEventListener('click', ()=> applyFilters());
-qInput.addEventListener('keyup', e=> { if(e.key === 'Enter') applyFilters(); });
-sortSel.addEventListener('change', ()=> applyFilters());
-filterNetwork.addEventListener('change', ()=> applyFilters());
-filterStatus.addEventListener('change', ()=> applyFilters());
-perPageSel.addEventListener('change', ()=> renderPage());
-prevPage.addEventListener('click', ()=> { if(page>1) { page--; renderPage(); } });
-nextPage.addEventListener('click', ()=> { const totalPages = Math.max(1, Math.ceil(filtered.length / perPage)); if(page < totalPages) { page++; renderPage(); } });
-
-/* allow drag/drop of CSV onto page */
-document.addEventListener('dragover', e=> e.preventDefault());
-document.addEventListener('drop', e=> {
-  e.preventDefault();
-  const f = (e.dataTransfer.files && e.dataTransfer.files[0]) || null;
-  if(!f) return;
-  if(!confirm('Load dropped file "' + f.name + '" into this page? Make sure you are authorized to use the data.')) return;
-  const reader = new FileReader();
-  reader.onload = ()=> { records = records.concat(parseCSV(reader.result)); finalizeLoad(); };
-  reader.readAsText(f);
-});
 
 </script>
 </body>
