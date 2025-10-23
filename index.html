@@ -1,267 +1,140 @@
-<!doctype html>
-
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>SIM Database (Local)</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SIM Owner Details Checker</title>
   <style>
-    :root{--accent:#0b76ef;--muted:#666}
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;max-width:1000px;margin:24px auto;padding:16px}
-    header{display:flex;align-items:center;justify-content:space-between}
-    h1{font-size:20px;margin:0}
-    .card{border:1px solid #e6e6e6;border-radius:10px;padding:14px;margin-top:12px;box-shadow:0 1px 2px rgba(0,0,0,0.03)}
-    form .row{display:flex;gap:8px;flex-wrap:wrap}
-    label{font-size:12px;color:var(--muted)}
-    input,select,button{padding:8px;border-radius:6px;border:1px solid #ddd}
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{padding:8px;border-bottom:1px solid #f0f0f0;text-align:left}
-    th{background:#fafafa;font-weight:600}
-    .small{font-size:13px;color:var(--muted)}
-    .actions button{margin-right:6px}
-    .topbar{display:flex;gap:8px;align-items:center}
-    .flex{display:flex;gap:8px}
-    .pill{background:#f5f9ff;color:var(--accent);padding:6px 10px;border-radius:999px;border:1px solid rgba(11,118,239,0.12)}
-    .hidden{display:none}
-    input[type=file]{padding:4px}
-    @media (max-width:720px){.row{flex-direction:column}}
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f6fa;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 30px;
+      width: 360px;
+      text-align: center;
+    }
+    h2 {
+      color: #007bff;
+      margin-bottom: 20px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #0056b3;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #f8f9fa;
+      text-align: left;
+      display: none;
+    }
+    .result p {
+      margin: 6px 0;
+    }
+    .error {
+      color: red;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
-  <header>
-    <h1>SIM Database (Local) — HTML Demo</h1>
-    <div class="pill">Local only · Saves to browser</div>
-  </header>  <div class="card">
-    <form id="addForm">
-      <div class="row">
-        <div style="flex:1">
-          <label>Owner name</label>
-          <input id="owner" placeholder="e.g. Ali Khan" required />
-        </div>
-        <div style="flex:1">
-          <label>SIM number</label>
-          <input id="sim" placeholder="03XXXXXXXXX" pattern="03[0-9]{9}" required />
-        </div>
-        <div style="width:160px">
-          <label>Operator</label>
-          <select id="operator">
-            <option value="Jazz">Jazz</option>
-            <option value="Telenor">Telenor</option>
-            <option value="Zong">Zong</option>
-            <option value="Ufone">Ufone</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-        <div style="width:160px">
-          <label>Status</label>
-          <select id="status">
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="blocked">Blocked</option>
-          </select>
-        </div>
-      </div>
-      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
-        <button type="submit">Add / Save</button>
-        <button id="clearAll" type="button">Clear all</button>
-        <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
-          <input id="search" placeholder="Search name / number / operator" />
-          <select id="sort">
-            <option value="created_desc">Newest</option>
-            <option value="created_asc">Oldest</option>
-            <option value="owner_asc">Owner A–Z</option>
-            <option value="owner_desc">Owner Z–A</option>
-          </select>
-        </div>
-      </div>
-    </form>
-  </div>  <div class="card">
-    <div class="topbar" style="justify-content:space-between">
-      <div class="small">Records: <span id="count">0</span></div>
-      <div class="flex">
-        <button id="exportCsv">Export CSV</button>
-        <input id="importFile" type="file" accept=".csv" />
-        <button id="seed">Seed sample</button>
-      </div>
-    </div><table id="table">
-  <thead>
-    <tr>
-      <th>#</th>
-      <th>Owner</th>
-      <th>SIM</th>
-      <th>Operator</th>
-      <th>Status</th>
-      <th>Added</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+  <div class="container">
+    <h2>SIM Owner Details Checker</h2>
+    <input type="text" id="simNumber" placeholder="Enter SIM Number (e.g. 03001234567)">
+    <button onclick="checkSim()">Check Owner Details</button>
+    <div class="error" id="error"></div>
+    <div class="result" id="resultBox">
+      <h3>Owner Information</h3>
+      <p><strong>Owner Name:</strong> <span id="ownerName"></span></p>
+      <p><strong>CNIC:</strong> <span id="cnic"></span></p>
+      <p><strong>Network:</strong> <span id="network"></span></p>
+      <p><strong>Status:</strong> <span id="status"></span></p>
+      <p><strong>Registration Date:</strong> <span id="regDate"></span></p>
+    </div>
+  </div>
 
-  </div>  <!-- Edit modal (simple) -->  <div id="editBox" class="card hidden" style="margin-top:12px">
-    <h3>Edit record</h3>
-    <form id="editForm">
-      <input id="editId" type="hidden" />
-      <div class="row">
-        <div style="flex:1"><label>Owner</label><input id="editOwner" required /></div>
-        <div style="flex:1"><label>SIM</label><input id="editSim" pattern="03[0-9]{9}" required /></div>
-        <div style="width:160px"><label>Operator</label><select id="editOperator"><option>Jazz</option><option>Telenor</option><option>Zong</option><option>Ufone</option><option>Other</option></select></div>
-        <div style="width:160px"><label>Status</label><select id="editStatus"><option value="active">Active</option><option value="inactive">Inactive</option><option value="blocked">Blocked</option></select></div>
-      </div>
-      <div style="margin-top:10px;display:flex;gap:8px">
-        <button type="submit">Save changes</button>
-        <button id="cancelEdit" type="button">Cancel</button>
-      </div>
-    </form>
-  </div>  <script>
-    // Basic SIM DB using localStorage
-    const STORAGE_KEY = 'sim_db_v1';
-    let db = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  <script>
+    // Demo SIM data — you can add more below
+    const simData = [
+      {
+        sim: "03001234567",
+        owner: "Ali Khan",
+        cnic: "35202-1234567-1",
+        network: "Jazz",
+        status: "Active",
+        regDate: "12-Jan-2024"
+      },
+      {
+        sim: "03121234567",
+        owner: "Sara Ahmed",
+        cnic: "61101-9876543-2",
+        network: "Telenor",
+        status: "Inactive",
+        regDate: "23-Mar-2023"
+      },
+      {
+        sim: "03211234567",
+        owner: "Usman Malik",
+        cnic: "37405-7654321-3",
+        network: "Zong",
+        status: "Active",
+        regDate: "05-May-2024"
+      }
+    ];
 
-    const $ = id => document.getElementById(id);
-    const tbody = document.querySelector('#table tbody');
-    const countSpan = $('count');
+    function checkSim() {
+      const input = document.getElementById("simNumber").value.trim();
+      const errorBox = document.getElementById("error");
+      const resultBox = document.getElementById("resultBox");
+      resultBox.style.display = "none";
+      errorBox.textContent = "";
 
-    function saveDB(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); }
+      if (!/^03[0-9]{9}$/.test(input)) {
+        errorBox.textContent = "Please enter a valid Pakistani SIM number (03XXXXXXXXX).";
+        return;
+      }
 
-    function render(){
-      const q = $('search').value.trim().toLowerCase();
-      const sort = $('sort').value;
-      let list = db.slice();
+      const record = simData.find(item => item.sim === input);
 
-      if(q){ list = list.filter(r => (r.owner + ' ' + r.sim + ' ' + r.operator).toLowerCase().includes(q)); }
-
-      if(sort === 'created_desc') list.sort((a,b)=>b.created-a.created);
-      if(sort === 'created_asc') list.sort((a,b)=>a.created-b.created);
-      if(sort === 'owner_asc') list.sort((a,b)=>a.owner.localeCompare(b.owner));
-      if(sort === 'owner_desc') list.sort((a,b)=>b.owner.localeCompare(a.owner));
-
-      tbody.innerHTML = '';
-      list.forEach((row,i)=>{
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${i+1}</td>
-          <td>${escapeHtml(row.owner)}</td>
-          <td>${escapeHtml(row.sim)}</td>
-          <td>${escapeHtml(row.operator)}</td>
-          <td>${escapeHtml(row.status)}</td>
-          <td>${new Date(row.created).toLocaleString()}</td>
-          <td class="actions">
-            <button data-id="${row.id}" class="editBtn">Edit</button>
-            <button data-id="${row.id}" class="delBtn">Delete</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-      countSpan.textContent = list.length;
+      if (record) {
+        document.getElementById("ownerName").textContent = record.owner;
+        document.getElementById("cnic").textContent = record.cnic;
+        document.getElementById("network").textContent = record.network;
+        document.getElementById("status").textContent = record.status;
+        document.getElementById("regDate").textContent = record.regDate;
+        resultBox.style.display = "block";
+      } else {
+        errorBox.textContent = "No record found for this SIM number.";
+      }
     }
-
-    function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-    function addRecord(obj){ db.push(obj); saveDB(); render(); }
-
-    // DOM events
-    document.getElementById('addForm').addEventListener('submit', e =>{
-      e.preventDefault();
-      const owner = $('owner').value.trim();
-      const sim = $('sim').value.trim();
-      if(!owner||!sim) return alert('Provide owner and sim');
-      // unique sim check
-      if(db.some(r=>r.sim===sim)){
-        if(!confirm('SIM already exists. Add duplicate?')) return;
-      }
-      addRecord({id: Date.now().toString(36), owner, sim, operator: $('operator').value, status: $('status').value, created: Date.now()});
-      $('owner').value=''; $('sim').value='';
-    });
-
-    document.addEventListener('click', e=>{
-      if(e.target.matches('.delBtn')){
-        const id = e.target.dataset.id;
-        if(confirm('Delete this record?')){ db = db.filter(r=>r.id!==id); saveDB(); render(); }
-      }
-      if(e.target.matches('.editBtn')){
-        const id = e.target.dataset.id; const rec = db.find(r=>r.id===id); if(!rec) return;
-        $('editId').value = rec.id; $('editOwner').value = rec.owner; $('editSim').value = rec.sim; $('editOperator').value = rec.operator; $('editStatus').value = rec.status;
-        $('editBox').classList.remove('hidden'); window.scrollTo({top:document.body.scrollHeight,behavior:'smooth'});
-      }
-    });
-
-    $('cancelEdit').addEventListener('click', ()=> $('editBox').classList.add('hidden'));
-
-    $('editForm').addEventListener('submit', e=>{
-      e.preventDefault();
-      const id = $('editId').value; const rec = db.find(r=>r.id===id); if(!rec) return;
-      rec.owner = $('editOwner').value.trim(); rec.sim = $('editSim').value.trim(); rec.operator = $('editOperator').value; rec.status = $('editStatus').value;
-      saveDB(); render(); $('editBox').classList.add('hidden');
-    });
-
-    $('search').addEventListener('input', render);
-    $('sort').addEventListener('change', render);
-
-    $('clearAll').addEventListener('click', ()=>{
-      if(confirm('Clear entire database?')){ db = []; saveDB(); render(); }
-    });
-
-    // CSV export/import
-    function toCSV(rows){
-      const header = ['id','owner','sim','operator','status','created'];
-      const lines = [header.join(',')].concat(rows.map(r=>header.map(h=>`"${String(r[h]||'').replace(/"/g,'""')}"`).join(',')));
-      return lines.join('\n');
-    }
-
-    $('exportCsv').addEventListener('click', ()=>{
-      const csv = toCSV(db);
-      const blob = new Blob([csv],{type:'text/csv'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a'); a.href=url; a.download='sim_db.csv'; a.click(); URL.revokeObjectURL(url);
-    });
-
-    $('importFile').addEventListener('change', e=>{
-      const f = e.target.files[0]; if(!f) return; const reader = new FileReader();
-      reader.onload = function(){
-        try{
-          const text = reader.result;
-          const lines = text.split(/\r?\n/).filter(Boolean);
-          const header = lines.shift().split(',').map(h=>h.replace(/"/g,'').trim());
-          const imported = lines.map(line=>{
-            // simple CSV parse (handles quoted)
-            const vals = csvSplit(line);
-            const obj = {};
-            header.forEach((h,i)=> obj[h]= (vals[i]||'').replace(/^"|"$/g, ''));
-            if(!obj.id) obj.id = Date.now().toString(36)+Math.random().toString(36).slice(2,6);
-            obj.created = Number(obj.created) || Date.now();
-            return obj;
-          });
-          db = db.concat(imported);
-          saveDB(); render();
-          alert('Imported ' + imported.length + ' records');
-        }catch(err){ alert('Import failed: '+err); }
-      };
-      reader.readAsText(f);
-      e.target.value='';
-    });
-
-    function csvSplit(line){
-      const out=[]; let cur=''; let inQ=false;
-      for(let i=0;i<line.length;i++){
-        const ch=line[i];
-        if(ch==='"') { if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else { inQ=!inQ; } continue; }
-        if(ch===',' && !inQ){ out.push(cur); cur=''; continue; }
-        cur+=ch;
-      }
-      out.push(cur);
-      return out;
-    }
-
-    // Seed
-    $('seed').addEventListener('click', ()=>{
-      const sample = [
-        {id:'s1',owner:'Ahmed',sim:'03001234567',operator:'Jazz',status:'active',created:Date.now()-1000*60*60*24},
-        {id:'s2',owner:'Sara',sim:'03009876543',operator:'Zong',status:'inactive',created:Date.now()-1000*60*60*3}
-      ]; db = db.concat(sample); saveDB(); render();
-    });
-
-    // initial render
-    render();
-  </script></body>
+  </script>
+</body>
 </html>
